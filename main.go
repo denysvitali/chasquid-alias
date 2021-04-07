@@ -93,6 +93,6 @@ func main(){
 		os.Exit(1)
 	}
 
-	fmt.Printf("%s\n", *recipients)
-
+	fmt.Printf("%s", *recipients)
+	os.Exit(0)
 }
