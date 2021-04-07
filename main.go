@@ -20,6 +20,9 @@ func envOrDefault(envName string, def string) string {
 
 func main(){
 	logger := logrus.New()
+	if envOrDefault("CHASQUID_ALIAS_DEBUG", "0") == "1" {
+		logger.SetLevel(logrus.DebugLevel)
+	}
 	if len(os.Args) != 2 {
 		logger.Errorf("invalid usage: please provide an email address as a parameter")
 		os.Exit(2)
@@ -79,7 +82,7 @@ func main(){
 
 	var recipients *string
 	if !rows.Next() {
-		logger.Infof("alias %s not found", emailAddr)
+		logger.Debugf("alias %s not found", emailAddr)
 		os.Exit(1)
 	}
 	err = rows.Scan(&recipients)
@@ -89,7 +92,7 @@ func main(){
 	}
 
 	if recipients == nil {
-		logger.Infof("alias %s not found", emailAddr)
+		logger.Debugf("alias %s not found", emailAddr)
 		os.Exit(1)
 	}
 
