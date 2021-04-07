@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 )
 
@@ -33,6 +34,8 @@ func main(){
 		os.Exit(2)
 	}
 
+	binaryName := path.Base(os.Args[0])
+
 	emailAddr := os.Args[1]
 	emailAddrSplit := strings.SplitAfter(emailAddr, "@")
 
@@ -43,14 +46,28 @@ func main(){
 
 	localPart, domain := strings.Replace(emailAddrSplit[0], "@", "", -1), emailAddrSplit[1]
 
+	recipients := getRecipients(logger, localPart, domain, emailAddr)
+
+	if recipients == nil {
+		logger.Debugf("alias %s not found", emailAddr)
+		if binaryName == "alias-exists" {
+			os.Exit(1)
+		} else {
+			os.Exit(0)
+		}
+	}
+
+	fmt.Printf("%s", *recipients)
+	os.Exit(0)
+}
+
+func getRecipients(logger *logrus.Logger, localPart string, domain string, emailAddr string) *string {
 	mysqlUrl := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
 		url.QueryEscape(envOrDefault("DOVECOT_DB_USER", "root")),
 		url.QueryEscape(envOrDefault("DOVECOT_DB_PASSWORD", "")),
 		url.QueryEscape(envOrDefault("DOVECOT_DB_HOST", "localhost")),
 		url.QueryEscape(envOrDefault("DOVECOT_DB_PORT", "3306")),
-		url.QueryEscape(envOrDefault("DOVECOT_DB_NAME", "dovecot")),
-	)
-
+		url.QueryEscape(envOrDefault("DOVECOT_DB_NAME", "dovecot")), )
 	db, err := sqlx.Open("mysql", mysqlUrl)
 	defer db.Close()
 
@@ -82,20 +99,12 @@ func main(){
 
 	var recipients *string
 	if !rows.Next() {
-		logger.Debugf("alias %s not found", emailAddr)
-		os.Exit(1)
+		return nil
 	}
 	err = rows.Scan(&recipients)
 	if err != nil {
 		logger.Errorf("unable to get recipients: %v", err)
 		os.Exit(5)
 	}
-
-	if recipients == nil {
-		logger.Debugf("alias %s not found", emailAddr)
-		os.Exit(1)
-	}
-
-	fmt.Printf("%s", *recipients)
-	os.Exit(0)
+	return recipients
 }
